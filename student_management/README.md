@@ -165,10 +165,3 @@ This project is provided for educational purposes. Feel free to reuse or adapt t
 
 ---
 
-If you want, I can also:
-
-- Add a short example `students.json` and implement saving/loading using `serde`
-- Split the code in `src/lib.rs` + `src/main.rs` and add unit tests
-- Create a small CONTRIBUTING.md and CODE_OF_CONDUCT
-
-Would you like me to make any of those improvements now?
