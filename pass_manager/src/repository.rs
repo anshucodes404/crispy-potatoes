@@ -14,7 +14,7 @@ impl CredentialRepository {
     pub async fn insert(&self, credential: &NewCredential) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
-                INSERT INTO pass_mg
+                INSERT INTO credentials
                 (website_name, user_name, password)
                 VALUES ($1, $2, $3);
             "#,
@@ -31,7 +31,7 @@ impl CredentialRepository {
     pub async fn delete(&self, id: i64) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
-                DELETE FROM pass_mg
+                DELETE FROM credentials
                 WHERE id = $1;
             "#,
         )
@@ -48,7 +48,7 @@ impl CredentialRepository {
     ) -> Result<Vec<Credential>, sqlx::Error> {
         let credentials = sqlx::query_as::<_, Credential>(
             r#"
-                SELECT * FROM pass_mg
+                SELECT * FROM credentials
                 WHERE website_name = $1;
             "#,
         )
@@ -65,7 +65,7 @@ impl CredentialRepository {
     ) -> Result<Vec<Credential>, sqlx::Error> {
         let credentials = sqlx::query_as::<_, Credential>(
             r#"
-                SELECT * FROM pass_mg
+                SELECT * FROM credentials
                 WHERE user_name = $1;
             "#,
         )
@@ -83,7 +83,7 @@ impl CredentialRepository {
     ) -> Result<Vec<Credential>, sqlx::Error> {
         let credentials = sqlx::query_as::<_, Credential>(
             r#"
-                SELECT * FROM pass_mg
+                SELECT * FROM credentials
                 WHERE website_name = $1 AND user_name = $2;
             "#,
         )
@@ -98,7 +98,7 @@ impl CredentialRepository {
     pub async fn find_all(&self) -> Result<Vec<Credential>, sqlx::Error> {
         let credentials = sqlx::query_as::<_, Credential>(
             r#"
-                SELECT * FROM pass_mg;
+                SELECT * FROM credentials;
             "#,
         )
         .fetch_all(&self.pool)

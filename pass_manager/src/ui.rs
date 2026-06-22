@@ -1,4 +1,4 @@
-use std::io::{self, BufWriter, Write};
+use std::io::{self, Write};
 use crate::Credential;
 
 pub fn menu() {
@@ -10,7 +10,6 @@ pub fn menu() {
     println!("5. Generate Password");
     println!("q. Exit");
     println!("============================");
-    print!("Enter your choice: ");
     io::stdout().flush().expect("failed to flush the output");
 }
 
@@ -54,15 +53,20 @@ pub fn input_id(prompt: &str) -> i64 {
 }
 
 pub fn print_credentials(credentials: Vec<Credential>) {
-    println!("==================== YOUR CREDENTIALS ====================");
+    println!("\n========================== YOUR CREDENTIALS ==========================");
     println!(
-        "{:<35}{:<20}{:<20}",
-        "WEBSITE NAME", "USER NAME", "PASSWORD"
+        "{:<3}{:<30}{:<20}{:<20}",
+        "ID", "WEBSITE NAME", "USER NAME", "PASSWORD"
     );
+
+    if credentials.len() == 0 {
+        println!("\t\t\tNO CREDENTIALS SAVED YET");
+    }
+    
     for cred in credentials {
         println!(
-            "{:<35}{:<20}{:<20}",
-            cred.website_name, cred.user_name, cred.password
+            "{:<3}{:<30}{:<20}{:<20}",
+            cred.id, cred.website_name, cred.user_name, cred.password
         );
     }
 }

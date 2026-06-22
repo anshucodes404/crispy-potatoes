@@ -140,7 +140,7 @@ async fn match_the_choice(
 
         "2" => {
             menu_for_search();
-            let search_choice = take_input("Enter choice for Search: ");
+            let search_choice = take_input("Enter choice for Search");
             match_choice_for_search(&search_choice, repo).await;
             Ok(false)
         }
@@ -178,7 +178,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         menu();
-        let choice = take_input("Enter your choice: ");
+        let choice = take_input("Enter your choice");
         if match_the_choice(choice.trim(), &repo).await? {
             break;
         }
