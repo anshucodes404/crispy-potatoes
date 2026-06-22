@@ -1,182 +1,127 @@
-use serde::{Deserialize, Serialize};
+use std::env;
 use std::error::Error;
-use std::fs::{self, File};
-use std::io::{self, BufWriter, Write};
+use sqlx::PgPool;
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-#[serde(rename_all = "camelCase")]
-struct Credential {
-    website_name: String,
-    user_name: String,
-    password: String,
-}
+use crate::repository::*;
+use crate::model::*;
+use crate::ui::*;
+
+mod model;
+mod repository;
+mod ui;
 
 const PATH: &str = "/home/codes404/credentials.json";
 
-fn menu() {
-    println!("\n===== Password Manager =====");
-    println!("1. Add Credential");
-    println!("2. Search Credential");
-    println!("3. List All Credentials");
-    println!("4. Delete Credential");
-    println!("5. Generate Password");
-    println!("q. Exit");
-    println!("============================");
-    print!("Enter your choice: ");
-    io::stdout().flush().expect("failed to flush the output");
-}
-
-fn load_credentials() -> Vec<Credential> {
-    let prev_credentials =
-        fs::read_to_string(PATH).expect("Not able to read credentials.json file");
-
-    serde_json::from_str(&prev_credentials).expect("Failed to parse json")
-}
-
-fn add_credential(credentials: &mut Vec<Credential>) {
+async fn add_credential(repo: &CredentialRepository) {
     println!("You chose to add a credential. \n Fill the required details");
 
     let website_name = take_input("Website Name");
     let user_name = take_input("User Name");
     let password = take_input("Password");
 
-    let credential = Credential {
+    let credential = NewCredential {
         website_name,
         user_name,
         password,
     };
 
-    if credentials.contains(&credential) {
-        println!("Credential already exists");
-    } else {
-        credentials.push(credential);
-        println!("Credential addedd successfully");
+    match repo.insert(&credential).await {
+        Ok(_) => println!("Credential inserted successfully"),
+        Err(err) => {
+            println!("DB error: {}", err);
+        }
+    } ;
+    
+}
+
+async fn search_on_website_name(repo: &CredentialRepository) {
+    let website_name = take_input("Website Name");
+
+    match repo
+        .find_by_website_name(website_name).await
+    {
+        Ok(credentials) => {
+            print_credentials(credentials);
+        }
+    
+        Err(err) => {
+            println!("Database error: {}", err);
+        }
     }
 }
 
-fn search_on_website_name(credentials: &[Credential]) {
-    let website_name = take_input("Website Name");
-
-    print_all_credentials(
-        credentials
-            .iter()
-            .filter(move |cred| cred.website_name == website_name),
-    );
-}
-
-fn search_on_user_name(credentials: &[Credential]) {
+async fn search_on_user_name(repo: &CredentialRepository) {
     let user_name = take_input("User Name");
 
-    print_all_credentials(
-        credentials
-            .iter()
-            .filter(move |cred| cred.user_name == user_name),
-    );
+    match repo
+        .find_by_user_name(user_name).await
+    {
+        Ok(credentials) => {
+            print_credentials(credentials);
+        }
+    
+        Err(err) => {
+            println!("Database error: {}", err);
+        }
+    }
 }
 
-fn search_on_website_name_and_user_name(credentials: &[Credential]) {
+async fn search_on_website_name_and_user_name(repo: &CredentialRepository) {
     let website_name = take_input("Website Name");
     let user_name = take_input("User Name");
 
-    print_all_credentials(
-        credentials
-            .iter()
-            .filter(move |cred| cred.user_name == user_name && cred.website_name == website_name),
-    );
+    match repo
+        .find_by_website_name_and_user_name(website_name,user_name,).await
+    {
+        Ok(credentials) => {
+            print_credentials(credentials);
+        }
+    
+        Err(err) => {
+            println!("Database error: {}", err);
+        }
+    }
 }
 
-fn delete_credential(credentials: &mut Vec<Credential>) {
+async fn print_all(repo: &CredentialRepository) {
+    match repo
+        .find_all().await
+    {
+        Ok(credentials) => {
+            print_credentials(credentials);
+        }
+    
+        Err(err) => {
+            println!("Database error: {}", err);
+        }
+    }
+}
+
+async fn delete_credential(repo: &CredentialRepository) {
     println!("You chose to delete a credential. \nFill the required details");
 
-    let website_name = take_input("Website Name");
-    let user_name = take_input("User Name");
+    let id = input_id("Enter ID to delete: ");
 
-    credentials.retain(|credential| {
-        credential.user_name != user_name || credential.website_name != website_name
-    });
-}
-
-fn save_file_before_exit(credentials: &[Credential]) -> Result<(), Box<dyn Error>> {
-    let file = File::create(PATH)?;
-    let writer = BufWriter::new(file);
-
-    serde_json::to_writer_pretty(writer, credentials)?;
-
-    Ok(())
-}
-
-fn take_input(prompt: &str) -> String {
-    loop {
-        print!("{}: ", prompt);
-
-        let mut input = String::new();
-
-        io::stdout().flush().expect("Failed to flush the output");
-
-        io::stdin()
-            .read_line(&mut input)
-            .expect("Failed to read the input");
-
-        let input = input.trim();
-
-        if input.len() == 0 {
-            println!("{} cannot be empty. Please try again. \n", prompt);
-            continue;
-        }
-
-        return input.to_string();
+    match repo.delete(id).await {
+        Ok(_) => println!("Credential Deleted successfully"),
+        Err(err) => println!("DB error: {}", err)
     }
 }
 
-fn menu_for_search() {
-    println!("========== SEARCH MENU ==========");
-    println!("1. Search from Website Name");
-    println!("2. Search from User Name");
-    println!("3. Search from Website and User Name");
-}
 
-fn choice_for_search() -> String {
 
-    println!("\nEnter your choice");
-
-    io::stdout().flush().expect("Failed to flush the output");
-    
-    let mut choice = String::new();
-    io::stdin()
-        .read_line(&mut choice)
-        .expect("Failed to read the choice");
-    choice
-}
-
-fn print_all_credentials<'a, I>(credentials: I)
-where
-    I: IntoIterator<Item = &'a Credential>,
-{
-    println!("==================== YOUR CREDENTIALS ====================");
-    println!(
-        "{:<35}{:<20}{:<20}",
-        "WEBSITE NAME", "USER NAME", "PASSWORD"
-    );
-    for cred in credentials {
-        println!(
-            "{:<35}{:<20}{:<20}",
-            cred.website_name, cred.user_name, cred.password
-        );
-    }
-}
-
-fn match_choice_for_search(choice: &str, credentials: &[Credential]) {
+async fn match_choice_for_search(choice: &str, repo: &CredentialRepository) {
     match choice {
         "1" => {
-            search_on_website_name(credentials);
+            search_on_website_name(repo).await;
         }
 
         "2" => {
-            search_on_user_name(credentials);
+            search_on_user_name(repo).await;
         }
 
         "3" => {
-            search_on_website_name_and_user_name(credentials);
+            search_on_website_name_and_user_name(repo).await;
         }
 
         _ => {
@@ -185,35 +130,34 @@ fn match_choice_for_search(choice: &str, credentials: &[Credential]) {
     }
 }
 
-fn match_the_choice(
+async fn match_the_choice(
     choice: &str,
-    credentials: &mut Vec<Credential>,
+    repo: &CredentialRepository
 ) -> Result<bool, Box<dyn Error>> {
     match choice {
         "1" => {
-            add_credential(credentials);
+            add_credential(repo).await;
             Ok(false)
         }
 
         "2" => {
             menu_for_search();
-            let search_choice = choice_for_search();
-            match_choice_for_search(&search_choice, credentials);
+            let search_choice = take_input("Enter choice for Search: ");
+            match_choice_for_search(&search_choice, repo).await;
             Ok(false)
         }
 
         "3" => {
-            print_all_credentials(credentials.iter());
+            print_all(repo).await;
             Ok(false)
         }
 
         "4" => {
-            delete_credential(credentials);
+            delete_credential(repo).await;
             Ok(false)
         }
 
         "q" => {
-            save_file_before_exit(credentials)?;
             Ok(true)
         }
 
@@ -224,20 +168,20 @@ fn match_the_choice(
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut credentials: Vec<Credential> = load_credentials();
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    dotenvy::dotenv().expect("Failed to load env file");
 
-    // println!("{:?}", credentials)
+    let local_url = env::var("DATABASE_URL").expect("Database URI not found in .env file");
+
+    let pool = PgPool::connect(&local_url).await?;
+
+    let repo = CredentialRepository::new(pool);
 
     loop {
         menu();
-
-        let mut choice = String::new();
-        io::stdin()
-            .read_line(&mut choice)
-            .expect("Failed to read choice");
-
-        if match_the_choice(choice.trim(), &mut credentials)? {
+        let choice = take_input("Enter your choice: ");
+        if match_the_choice(choice.trim(), &repo).await? {
             break;
         }
     }
