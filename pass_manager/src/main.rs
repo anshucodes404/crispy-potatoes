@@ -10,8 +10,6 @@ mod model;
 mod repository;
 mod ui;
 
-const PATH: &str = "/home/codes404/credentials.json";
-
 async fn add_credential(repo: &CredentialRepository) {
     println!("You chose to add a credential. \n Fill the required details");
 
